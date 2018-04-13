@@ -1,0 +1,385 @@
+<HTML>
+<HEAD>
+<TITLE>TI-99/4A Auto Character Definition</TITLE>
+</HEAD
+
+<!-- Chardef in Javascript, by Corey Anderson, 12/06/15 ElectricLab.com -->
+<!-- Feel free to distribute - just give credit where it's due! -->
+<!-- TODO: 
+     [ ] Add buttons to toggle all to black/white buttons
+     [*] Display hexified data in format suitable for ASM code: >0000,>000C,>020E,>120E
+     [ ] Add ability to enter hex to view resultant graphics
+-->
+
+<script>
+    var charDefInterface = function( id, interfacePixelSize, smallCanvasPixelSize, smallCanvas68PixelSize ) {
+        //
+        // id is the HTML id.
+        // interfacePixelSize is the size of the interface's pixel (table cell).
+        // smallCanvasPixelSize is the size of the pixels in the small canvas representation of the character.
+        // smallCanvas68PixelSize is the size of the pixels in the large canvas representation of the character.
+        //        
+        // Returns:
+        //
+        // interfaceHTML is the HTML table with clickable table cells.
+        // smallCanvas is the small canvas for the character.
+        // smallCanvas68 is the large canvas for the character.
+        // hexCode is the returned hex code for the entire character.
+
+        var smallCanvasID = 'smallCanvas_' + id;
+        var smallCanvas = "<canvas id='" + smallCanvasID + "' width='" + (smallCanvasPixelSize * 8) + "' height='" + (smallCanvasPixelSize * 8) + "' style='border:1px solid #d3d3d3;'>";
+
+        var smallCanvas68ID = 'smallCanvas68_' + id;
+        var smallCanvas68 = "<canvas id='" + smallCanvas68ID + "' width='" + (smallCanvas68PixelSize * 6) + "' height='" + (smallCanvas68PixelSize * 8) + "' style='border:1px solid #d3d3d3;'>";
+        
+        var hexBoxID = 'hexBox_' + id;
+        var hexBoxHTML = '<input style="font-size: 15px;font-family: Verdana;Helvetica" type=text READONLY size=26 id="' + hexBoxID + '" value=">0000,>0000,>0000,>0000">';
+
+        var interfaceHTML = '<table id="myTable_'+ id + '" style="border: 1px solid #d3d3d3;" cellpadding=0 cellspacing=0>';
+        
+        for (y = 0; y <= 7; y++) {
+            interfaceHTML += "<tr>\n";
+            
+            for (x = 0; x <= 7; x++) {
+                var cellID = id + x + y;
+
+                interfaceHTML += '<td id="' + cellID + '" bgcolor="#FFFFFF"><a href="#" onClick="togglePixel(' + x + ',' + y + ',\'' + id + '\',\'' + smallCanvasID + '\',' + smallCanvasPixelSize + ',\'' + smallCanvas68ID + '\',' + smallCanvas68PixelSize + ',\'' + hexBoxID + '\');"><img src="clearpixel.gif" border=0 width=' + interfacePixelSize + ' height=' + interfacePixelSize + '"></a></td>' + "\n";
+            }
+
+            interfaceHTML += "</tr>\n";
+        }
+
+        interfaceHTML += "</table>";
+
+        return { interfaceHTML: interfaceHTML,
+                 smallCanvasID: smallCanvasID,
+                   smallCanvas: smallCanvas,
+                 smallCanvas68ID: smallCanvas68ID,
+                   smallCanvas68: smallCanvas68,
+                      hexBoxID: hexBoxID,
+                    hexBoxHTML: hexBoxHTML,
+               };
+    }
+    
+    function togglePixel (x, y, id, smallCanvasID, smallCanvasPixelSize, smallCanvas68ID, smallCanvas68PixelSize, hexBoxID) {
+        var cellID = id + x + y;
+
+        var tmp = document.getElementById(cellID);
+        
+        var newColor = (tmp.bgColor == '#FFFFFF') ? '#000000' : '#FFFFFF';
+        tmp.bgColor = newColor;
+        
+        // Update the small and large canvas:
+        //
+        
+        var smallCanvas = document.getElementById(smallCanvasID);
+        var smallCanvasContext = smallCanvas.getContext("2d");
+        
+        var smallCanvas68 = document.getElementById(smallCanvas68ID);
+        var smallCanvas68Context = smallCanvas68.getContext("2d");
+        
+//        clearDebugText();
+        
+        var mark = 3; // For keeping track of where we are in counting bits, used for calculating hex values.
+        
+        document.getElementById(hexBoxID).value = '';
+        
+        for (y = 0; y <= 7; y++) {
+        
+            // Reset hex variables for each row:
+            //
+            var tmpHexValue = '';
+            var tmpDecValue = 0;
+            var tmpHexValue = 0;          
+        
+            for (x = 0; x <= 7; x++) {
+                var cellID = id + x + y;
+
+                var tmp = document.getElementById(cellID);
+                
+                if (tmp.bgColor == '#000000') {
+                    tmpDecValue += Math.pow(2, mark);
+                }
+                    
+                if (mark-- == 0) { // We have calculated a decimal value, now convert to HEX and reset tmp variables.
+                    tmpHexValue = tmpDecValue.toString(16);
+                    
+                    var tmpText = document.getElementById(hexBoxID).value;
+                    
+
+                    tmpText = tmpText + tmpHexValue;
+
+
+                    document.getElementById(hexBoxID).value = tmpText.toUpperCase();    
+                    
+                    // Reset some variables
+                    mark = 3; 
+                    tmpDecValue = 0;
+                    tmpHexValue = 0;
+                }
+
+                var start_x = x * smallCanvasPixelSize;
+                var start_y = y * smallCanvasPixelSize;
+    
+                var tmp = document.getElementById(cellID);
+    
+                smallCanvasContext.fillStyle = tmp.bgColor; // Set the background color
+                smallCanvasContext.fillRect(start_x, start_y, smallCanvasPixelSize, smallCanvasPixelSize);
+                
+                // Small Canvas 6 x 8:
+                //
+                var start_x = x * smallCanvas68PixelSize;
+                var start_y = y * smallCanvas68PixelSize;
+    
+                var tmp = document.getElementById(cellID);
+    
+                smallCanvas68Context.fillStyle = tmp.bgColor; // Set the background color
+                smallCanvas68Context.fillRect(start_x, start_y, smallCanvas68PixelSize, smallCanvas68PixelSize);                
+            }
+
+
+        }            
+
+        // Add our extra chars for ASM friendliness:
+        // ie: >0000,>000A,>0F07,>0301;
+
+      	var tmpText = document.getElementById(hexBoxID).value;
+        tmpText = '>' + tmpText.substr(0, 4) + ',>' + tmpText.substr(4, 4) + ',>' + tmpText.substr(8, 4) + ',>' + tmpText.substr(12, 4);
+        document.getElementById(hexBoxID).value = tmpText.toUpperCase();
+
+    }  
+
+    function showDebugText (debugText) {
+        var tmpText = document.getElementById('debuggery').value;
+        debugText = tmpText + "\n" + debugText;
+        document.getElementById('debuggery').value = debugText;
+    }
+    
+    function clearDebugText () {
+        document.getElementById('debuggery').value = '';
+    }
+
+</script>
+
+
+<BODY>
+
+<p align=center>
+<span style="font-size: 14px;font-family: Verdana;Helvetica">AUTO CHARACTER DEFINITION</span>
+</p>
+
+<p align=center>
+
+</p>
+
+<BR><BR>
+<span style="font-size: 11px;font-family: Verdana;Helvetica">Version 1.2 Corey J. Anderson &nbsp; <a href="http://myti99.com">MyTI99.com</a>
+<HR>
+
+
+<!--
+DEBUGGERY:
+<BR>
+<textarea id="debuggery" rows=8 cols=180></textarea>
+-->
+
+<script>
+    
+    var box1 = charDefInterface('box1', 25, 4, 4);  // id, interfacePixelSize, smallCanvasPixelSize, smallCanvas68PixelSize
+    var box2 = charDefInterface('box2', 25, 4, 4);
+    var box3 = charDefInterface('box3', 25, 4, 4);
+
+    var box4 = charDefInterface('box4', 25, 4, 4);
+    var box5 = charDefInterface('box5', 25, 4, 4);
+    var box6 = charDefInterface('box6', 25, 4, 4);
+
+    var box7 = charDefInterface('box7', 25, 4, 4);
+    var box8 = charDefInterface('box8', 25, 4, 4);
+    var box9 = charDefInterface('box9', 25, 4, 4);
+    
+    function toggleInterfaceCanvasGrid() {
+        var newStyle;
+    
+        var myTable = document.getElementById('myTable_box1');
+    
+        if (!myTable.style.border.search("0px")) {
+            newStyle = '1px solid #d3d3d3';
+        }
+        else {
+            newStyle = '0px solid #d3d3d3';
+        }       
+    
+        myTable.style.border = newStyle;  
+
+        document.getElementById('myTable_box1').style.border = newStyle;
+        document.getElementById('myTable_box2').style.border = newStyle;
+        document.getElementById('myTable_box3').style.border = newStyle;
+        document.getElementById('myTable_box4').style.border = newStyle;
+        document.getElementById('myTable_box5').style.border = newStyle;
+        document.getElementById('myTable_box6').style.border = newStyle;
+        document.getElementById('myTable_box7').style.border = newStyle;
+        document.getElementById('myTable_box8').style.border = newStyle;
+        document.getElementById('myTable_box9').style.border = newStyle;
+    }
+    
+    function toggleSmallCanvasGrid() {
+        var newStyle;
+    
+        if (!smallCanvas_box1.style.border.search("0px")) {
+            newStyle = '1px solid #d3d3d3';
+        }
+        else {
+            newStyle = '0px solid #d3d3d3';
+        }            
+    
+        smallCanvas_box1.style.border = newStyle;  
+        smallCanvas_box2.style.border = newStyle;  
+        smallCanvas_box3.style.border = newStyle;  
+        smallCanvas_box4.style.border = newStyle;  
+        smallCanvas_box5.style.border = newStyle;  
+        smallCanvas_box6.style.border = newStyle;  
+        smallCanvas_box7.style.border = newStyle;  
+        smallCanvas_box8.style.border = newStyle;  
+        smallCanvas_box9.style.border = newStyle;  
+    }
+    
+    
+    function toggleSmallCanvas68Grid() {
+        var newStyle;
+    
+        if (!smallCanvas68_box1.style.border.search("0px")) {
+            newStyle = '1px solid #d3d3d3';
+        }
+        else {
+            newStyle = '0px solid #d3d3d3';
+        }            
+    
+        smallCanvas68_box1.style.border = newStyle;  
+        smallCanvas68_box2.style.border = newStyle;  
+        smallCanvas68_box3.style.border = newStyle;  
+        smallCanvas68_box4.style.border = newStyle;  
+        smallCanvas68_box5.style.border = newStyle;  
+        smallCanvas68_box6.style.border = newStyle;  
+        smallCanvas68_box7.style.border = newStyle;  
+        smallCanvas68_box8.style.border = newStyle;  
+        smallCanvas68_box9.style.border = newStyle;  
+    }    
+
+</script>
+
+
+<table cellpadding=4 cellspacing=0 border=0>
+<tr><td colspan=5> Click below to generate TI graphics: </td></tr>
+<tr>
+
+<td>
+        <table cellpadding=0 cellspacing=0 border=0>
+        <tr>
+            <td> <script> document.write( box1.interfaceHTML ); </script> </td>
+            <td> <script> document.write( box2.interfaceHTML ); </script> </td>
+            <td> <script> document.write( box3.interfaceHTML ); </script> </td>
+        </tr>
+        <tr>
+            <td> <script> document.write( box4.interfaceHTML ); </script> </td>
+            <td> <script> document.write( box5.interfaceHTML ); </script> </td>
+            <td> <script> document.write( box6.interfaceHTML ); </script> </td>
+        </tr>
+        <tr>
+            <td> <script> document.write( box7.interfaceHTML ); </script> </td>
+            <td> <script> document.write( box8.interfaceHTML ); </script> </td>
+            <td> <script> document.write( box9.interfaceHTML ); </script> </td>
+        </tr>
+        </table>
+<br>
+<table cellpadding=6 cellspacing=0>
+<tr><td> <a href="#" onClick='toggleInterfaceCanvasGrid();'>Grid Off/On</a> </td>
+    <td> &nbsp; &nbsp; &nbsp; &nbsp; </td>
+    <td><input type=button value=" Reset " onClick="window.location.reload();"></td>
+</tr>
+</table>
+
+</td>
+<td> <img src="clearpixel.gif" width=40></td>
+<td valign=top>
+        <table cellpadding=0 cellspacing=0 border=0>
+        <tr>
+            <td> <script> document.write( box1.smallCanvas ); </script> </td>
+            <td> <script> document.write( box2.smallCanvas ); </script> </td>
+            <td> <script> document.write( box3.smallCanvas ); </script> </td>
+        </tr>
+        <tr>
+            <td> <script> document.write( box4.smallCanvas ); </script> </td>
+            <td> <script> document.write( box5.smallCanvas ); </script> </td>
+            <td> <script> document.write( box6.smallCanvas ); </script> </td>
+        </tr>
+        <tr>
+            <td> <script> document.write( box7.smallCanvas ); </script> </td>
+            <td> <script> document.write( box8.smallCanvas ); </script> </td>
+            <td> <script> document.write( box9.smallCanvas ); </script> </td>
+        </tr>
+        </table>
+<br>
+<a href="#" onClick='toggleSmallCanvasGrid();'>Grid Off/On</a>
+
+
+<BR><BR><BR>
+<font size=-1>6 x 8</font>
+<!-- small 6x8 canvases: -->
+        <table cellpadding=0 cellspacing=0 border=0>
+        <tr>
+            <td> <script> document.write( box1.smallCanvas68 ); </script> </td>
+            <td> <script> document.write( box2.smallCanvas68 ); </script> </td>
+            <td> <script> document.write( box3.smallCanvas68 ); </script> </td>
+        </tr>
+        <tr>
+            <td> <script> document.write( box4.smallCanvas68 ); </script> </td>
+            <td> <script> document.write( box5.smallCanvas68 ); </script> </td>
+            <td> <script> document.write( box6.smallCanvas68 ); </script> </td>
+        </tr>
+        <tr>
+            <td> <script> document.write( box7.smallCanvas68 ); </script> </td>
+            <td> <script> document.write( box8.smallCanvas68 ); </script> </td>
+            <td> <script> document.write( box9.smallCanvas68 ); </script> </td>
+        </tr>
+        </table>
+
+<br>
+<a href="#" onClick='toggleSmallCanvas68Grid();'>Grid Off/On</a>
+
+</td>
+<td> <img src="clearpixel.gif" width=40></td>
+
+<td valign=top>
+        <table cellpadding=0 cellspacing=0 border=0>
+        <tr>
+            <td> <script> document.write( box1.hexBoxHTML ); </script> </td>
+            <td> <script> document.write( box2.hexBoxHTML ); </script> </td>
+            <td> <script> document.write( box3.hexBoxHTML ); </script> </td>
+        </tr>
+        <tr>
+            <td> <script> document.write( box4.hexBoxHTML ); </script> </td>
+            <td> <script> document.write( box5.hexBoxHTML ); </script> </td>
+            <td> <script> document.write( box6.hexBoxHTML ); </script> </td>
+        </tr>
+        <tr>
+            <td> <script> document.write( box7.hexBoxHTML ); </script> </td>
+            <td> <script> document.write( box8.hexBoxHTML ); </script> </td>
+            <td> <script> document.write( box9.hexBoxHTML ); </script> </td>
+        </tr>
+        </table>
+
+</td>
+
+</tr>
+</table>
+
+
+
+</BODY>
+
+
+</HTML>
+
+
+
+
